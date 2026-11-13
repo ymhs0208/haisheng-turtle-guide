@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-abyss: #04151c;
+  --color-deep: #07202b;
+  --color-lagoon: #0e3342;
+  --color-foam: #e7f6f3;
+  --color-muted: #93b8b8;
+  --color-teal: #3ee0c5;
+  --color-sand: #f3e0b8;
+  --color-coral: #ff7d6e;
+  --color-gold: #e6c27a;
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-serif: "Noto Serif TC", "Songti TC", serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 420px at 50% -10%, rgba(62, 224, 197, 0.16), transparent 55%),
+    radial-gradient(700px 380px at 100% 100%, rgba(255, 125, 110, 0.08), transparent 42%),
+    var(--color-abyss);
+  color: var(--color-foam);
+  font-family: var(--font-sans);
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+}
+
+.porthole {
+  position: relative;
+  width: min(100%, 320px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 10px solid #e6d3ae;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 42%, #14627a, #04202b 72%);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.45),
+    0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.porthole .water {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, transparent 0 16px, rgba(255, 255, 255, 0.045) 16px 18px);
+  animation: drift 9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes drift {
+  to {
+    background-position: 90px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .porthole .water {
+    animation: none;
+  }
+}

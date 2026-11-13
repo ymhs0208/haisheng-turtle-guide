@@ -1,0 +1,18 @@
+{
+  "name": "nmmba-xiaolu",
+  "private": true,
+  "workspaces": [
+    "server",
+    "web",
+    "display"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web,display -c cyan,green,yellow \"npm run dev -w server\" \"npm run dev -w web\" \"npm run dev -w display\"",
+    "test": "npm run test -w server",
+    "build": "npm run build -w server && npm run build -w web && npm run build -w display",
+    "start": "npm run start -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
