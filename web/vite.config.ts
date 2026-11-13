@@ -19,7 +19,7 @@ export default defineConfig({
     fs: { allow: [path.resolve(__dirname, "..")] },
     proxy: {
       "/api": { target: api, changeOrigin: true },
-      "/ws": { target: api, ws: true, changeOrigin: true },
+      "/ws": { target: api, ws: true, changeOrigin: true, rewriteWsOrigin: true },
     },
   },
   preview: { host: "0.0.0.0", port: 43123 },

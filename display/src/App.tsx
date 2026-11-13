@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { TurtleStage, type TurtleAnim, type TurtlePhase } from "@scene/TurtleStage";
-import slides from "../../content/public-slides.json";
+import rawSlides from "../../content/public-slides.json";
 
 interface ShowView {
   id: string;
@@ -19,6 +19,53 @@ interface BoxAnswer {
   reply: string;
   votes: number;
   sources: { title: string }[];
+}
+
+interface Slide {
+  zoneId: string;
+  zoneName: string;
+  title: string;
+  text: string;
+}
+
+const FALLBACK_SLIDE: Slide = {
+  zoneId: "coral",
+  zoneName: "珊瑚礁",
+  title: "離線導覽",
+  text: "目前讀不到預錄稿。請確認 content/public-slides.json 有跟著這個頁面載入。",
+};
+
+function loadSlides(raw: unknown): Slide[] {
+  const value =
+    raw && typeof raw === "object" && !Array.isArray(raw) && "default" in raw
+      ? (raw as { default: unknown }).default
+      : raw;
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is Slide =>
+      !!item &&
+      typeof item === "object" &&
+      typeof (item as Slide).zoneId === "string" &&
+      typeof (item as Slide).zoneName === "string" &&
+      typeof (item as Slide).title === "string" &&
+      typeof (item as Slide).text === "string",
+  );
+}
+
+const slides = loadSlides(rawSlides);
+
+function socketUrl(): string {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${location.host}/ws`;
+}
+
+function closeSocket(socket: WebSocket | null) {
+  if (!socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) return;
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.close();
+    return;
+  }
+  socket.addEventListener("open", () => socket.close(), { once: true });
 }
 
 const params = new URLSearchParams(location.search);
@@ -47,7 +94,7 @@ export function App() {
 
   useEffect(() => {
     if (online) return;
-    const id = window.setInterval(() => setSlide((value) => (value + 1) % slides.length), 16000);
+    const id = window.setInterval(() => setSlide((value) => (value + 1) % Math.max(1, slides.length)), 16000);
     return () => window.clearInterval(id);
   }, [online]);
 
@@ -63,8 +110,7 @@ export function App() {
     let socket: WebSocket | null = null;
     const connect = () => {
       if (stop) return;
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      socket = new WebSocket(`${proto}//${location.host}/ws`);
+      socket = new WebSocket(socketUrl());
       wsRef.current = socket;
       socket.onopen = () => {
         delay = 800;
@@ -114,7 +160,7 @@ export function App() {
     connect();
     return () => {
       stop = true;
-      socket?.close();
+      closeSocket(socket);
     };
   }, []);
 
@@ -123,7 +169,7 @@ export function App() {
       if (event.key === "m" || event.key === "M") setMirror((value) => !value);
       if (event.key === "h" || event.key === "H") setHud((value) => !value);
       if (event.key === "f" || event.key === "F") void document.documentElement.requestFullscreen?.();
-      if (event.key === "n" || event.key === "N") setSlide((value) => (value + 1) % slides.length);
+      if (event.key === "n" || event.key === "N") setSlide((value) => (value + 1) % Math.max(1, slides.length));
       if (event.key === " ") {
         event.preventDefault();
         const ws = wsRef.current;
@@ -134,8 +180,9 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const current = slides.find((item) => item.zoneId === zoneId) ?? slides[slide] ?? slides[0];
-  const offlineSlide = slides[slide] ?? slides[0];
+  const deck = slides.length > 0 ? slides : [FALLBACK_SLIDE];
+  const current = deck.find((item) => item.zoneId === zoneId) ?? deck[slide % deck.length] ?? deck[0];
+  const offlineSlide = deck[slide % deck.length] ?? deck[0];
   const remain = show ? Math.max(0, Math.ceil((show.endsAt - now - clockOffset) / 1000)) : 0;
   let anim: TurtleAnim = "idle";
   let emphasis: "replay" | "none" = "none";
@@ -153,7 +200,7 @@ export function App() {
   return (
     <div className={mirror ? "root mirror" : "root"}>
       <div className="stage">
-        <TurtleStage anim={anim} phase={phase} quality="high" emphasis={emphasis} transparent={false} />
+        <TurtleStage className="stage-fill" anim={anim} phase={phase} quality="high" emphasis={emphasis} transparent={false} />
       </div>
       <section className="copy">
         {!online && offlineSlide && (

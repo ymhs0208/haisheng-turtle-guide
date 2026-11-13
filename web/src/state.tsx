@@ -121,7 +121,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     let socket: WebSocket | null = null;
     const connect = () => {
       if (stop) return;
-      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${proto}//${location.host}/ws`);
       wsRef.current = socket;
       socket.onopen = () => {
@@ -193,7 +193,11 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     connect();
     return () => {
       stop = true;
-      socket?.close();
+      if (socket && socket.readyState === WebSocket.CONNECTING) {
+        socket.addEventListener("open", () => socket?.close(), { once: true });
+      } else {
+        socket?.close();
+      }
       wsRef.current = null;
     };
   }, [session?.id, refresh]);
