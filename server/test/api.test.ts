@@ -171,7 +171,7 @@ test("聊天會擋注入，換區後記得先前的錯，而且只提一次", as
     body: JSON.stringify({ message: "綠蠵龜長大後吃什麼？" }),
   });
   assert.equal(known.data.intent, "knowledge");
-  assert.match(known.data.reply, /《.+》/);
+  assert.match(known.data.reply, /\[1\]/);
 });
 
 test("兩支手機的團體題會在展示箱彙總，並依各自分組給不同補救", async () => {

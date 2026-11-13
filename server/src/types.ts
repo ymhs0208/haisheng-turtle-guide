@@ -89,7 +89,7 @@ export interface ChatRow {
   sessionId: string;
   role: "user" | "assistant";
   content: string;
-  sources: { id: string; title: string; zoneId: string }[];
+  sources: { id: string; title: string; zoneId: string; snippet?: string; section?: string; url?: string }[];
   intent: string | null;
   ts: number;
 }

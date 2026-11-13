@@ -1,47 +1,29 @@
 import { randomUUID } from "node:crypto";
-import { chunkDocument } from "./embed.js";
+import { toCiteSource, type CiteSource } from "./cite.js";
 import { embedText, fixedReply, generateReply, type LlmChunk } from "./llm.js";
-import { cosine, localEmbed } from "./embed.js";
+import { localEmbed } from "./embed.js";
+import { classifyByRules, classifyQuestion, filterOutput, type GuardLabel } from "./guard.js";
+import { remoteLlmEnabled } from "./provider.js";
+import { rankChunks, RETRIEVAL_THRESHOLD } from "./rank.js";
 import type { ContentRepo } from "./content.js";
 import type { Store } from "./store.js";
 import type { Session } from "./types.js";
 
 export type Intent = "injection" | "offtopic" | "chitchat" | "knowledge";
 
-const INJECTION = [
-  /ignore\s+(all\s+)?(previous|above|prior)\s+instructions/i,
-  /system\s+prompt/i,
-  /developer\s+mode/i,
-  /jailbreak/i,
-  /忽略(之前|以上|前面|先前)(所有)?(的)?(指令|規則|提示)/,
-  /無視(之前|以上|系統)/,
-  /系統提示/,
-  /開發者模式/,
-  /越獄/,
-  /<\s*\/?\s*script/i,
-  /\[(?:system|INST)\]/i,
-];
+export { RETRIEVAL_THRESHOLD };
 
-const MARINE =
-  /珊瑚|蟲黃|白化|礁|海龜|綠蠵龜|蠵龜|海草|產卵|稚龜|深海|熱泉|生物發光|水壓|化學合成|管蟲|鯨|鯊|水母|塑膠|保育|迴游|洄游|藻|貝|魚|海洋|海水|海底|展區|海生館|小綠/;
-
-const CHITCHAT =
-  /你好|哈囉|嗨|您好|早安|午安|晚安|謝謝|感謝|掰|再見|拜拜|你是誰|你好嗎|在嗎|笑話|你叫什麼/;
-
-const OFFTOPIC = /總統|選舉|股票|比特幣|作業代寫|寫程式|python|天氣|食譜|電影|政治|新聞|股價/i;
-
-export const RETRIEVAL_THRESHOLD = 0.18;
-const ZONE_BOOST = 0.08;
+function intentFromLabel(label: Exclude<GuardLabel, "unsure">): Intent {
+  if (label === "unsafe") return "injection";
+  if (label === "off_topic") return "offtopic";
+  if (label === "small_talk") return "chitchat";
+  return "knowledge";
+}
 
 export function routeIntent(text: string): Intent {
-  const message = text.trim();
-  if (INJECTION.some((pattern) => pattern.test(message))) return "injection";
-  if (MARINE.test(message)) return "knowledge";
-  if (OFFTOPIC.test(message)) return "offtopic";
-  if (CHITCHAT.test(message) && message.length <= 40) return "chitchat";
-  if (/[？?]/.test(message) || /為什麼|如何|什麼/.test(message)) return "offtopic";
-  if (message.length <= 16) return "chitchat";
-  return "offtopic";
+  const ruled = classifyByRules(text);
+  if (ruled === "unsure") return "offtopic";
+  return intentFromLabel(ruled);
 }
 
 export interface RankedChunk extends LlmChunk {
@@ -57,32 +39,25 @@ export async function retrieve(
   zoneId: string | null,
 ): Promise<RankedChunk[]> {
   const embedding = await embedText(query);
-  const stored = await store.searchChunks(embedding, 24);
+  const stored = await store.listChunks();
   const overrides = await store.listOverrides();
-  const extras: RankedChunk[] = [];
+  const extras = [];
   for (const override of overrides) {
     const located = content.locateConcept(override.conceptId);
     if (!located || !override.summary?.trim()) continue;
     const title = `${override.title?.trim() || located.concept.title}（館方更新）`;
     const body = override.summary.trim();
     const tags = [located.zone.name, located.concept.title];
-    const vector = await embedText(chunkDocument(title, body, tags));
     extras.push({
       id: `override-${override.conceptId}`,
       zoneId: located.zone.id,
       title,
       body,
       tags,
-      raw: cosine(embedding, vector),
-      score: 0,
+      embedding: await embedText(`${title}\n${body}\n${tags.join(" ")}`),
     });
   }
-  const merged = [...stored.map((item) => ({ ...item, score: item.raw })), ...extras];
-  return merged
-    .filter((item) => item.raw >= RETRIEVAL_THRESHOLD)
-    .map((item) => ({ ...item, score: item.raw + (item.zoneId === zoneId ? ZONE_BOOST : 0) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+  return rankChunks(query, embedding, [...stored, ...extras], zoneId, 3);
 }
 
 export function buildMemoryNote(session: Session, content: ContentRepo): { note: string; conceptId: string } | null {
@@ -108,14 +83,23 @@ export async function answerChat(input: {
 }): Promise<{
   reply: string;
   intent: Intent;
-  sources: { id: string; title: string; zoneId: string }[];
+  sources: CiteSource[];
   provider: string;
+  confidence: "high" | "low";
 }> {
   const style = input.style ?? "chat";
   const persist = input.persist ?? style === "chat";
   const includeMemory = (input.includeMemory ?? style === "chat") && persist;
-  const message = input.message.trim().slice(0, 500);
-  const intent = routeIntent(message);
+  const message = input.message.trim().slice(0, 400);
+  const ruled = classifyByRules(message);
+  const label =
+    ruled === "unsure" && remoteLlmEnabled()
+      ? await classifyQuestion(message, async (prompt) => {
+          const { chatComplete } = await import("./provider.js");
+          return chatComplete([{ role: "user", content: prompt }], 0);
+        })
+      : await classifyQuestion(message);
+  const intent = intentFromLabel(label);
   const ageGroup = style === "box" ? "adult" : input.session.ageGroup;
   let sources: RankedChunk[] = [];
   let reply = "";
@@ -150,7 +134,7 @@ export async function answerChat(input: {
         history: persist ? await historyOf(input.store, input.session.id) : [],
         style,
       });
-      reply = generated.text;
+      reply = filterOutput(generated.text, fixedReply("injection"));
       provider = generated.provider;
     }
   }
@@ -162,11 +146,7 @@ export async function answerChat(input: {
     reply = `${memory.note}${reply}`;
   }
 
-  const publicSources = (intent === "knowledge" ? sources : []).map((item) => ({
-    id: item.id,
-    title: item.title,
-    zoneId: item.zoneId,
-  }));
+  const publicSources = (intent === "knowledge" ? sources : []).map((item) => toCiteSource(item));
 
   if (persist) {
     const next: Session = {
@@ -212,7 +192,8 @@ export async function answerChat(input: {
     });
   }
 
-  return { reply, intent, sources: publicSources, provider };
+  const confidence = intent === "knowledge" && publicSources.length > 0 ? "high" : "low";
+  return { reply, intent, sources: publicSources, provider, confidence };
 }
 
 async function historyOf(store: Store, sessionId: string) {
