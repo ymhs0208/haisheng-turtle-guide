@@ -742,7 +742,7 @@ export function TurtleStage({
       <Canvas
         frameloop={phase === "off" || capped ? "demand" : "always"}
         dpr={quality === "low" ? 1 : capped ? [1, 1.25] : [1, 2]}
-        camera={{ position: glow ? [1.35, 1.05, 5.15] : [0.42, 0.78, 5.05], fov: glow ? 28 : 30 }}
+        camera={{ position: glow ? [1.35, 1.05, 5.15] : [0.48, 0.92, 7.85], fov: glow ? 28 : 32 }}
         gl={{
           alpha: transparent,
           antialias: quality !== "low",
@@ -750,7 +750,7 @@ export function TurtleStage({
         }}
         onCreated={({ gl, camera }) => {
           gl.setClearColor("#000000", transparent ? 0 : 1);
-          camera.lookAt(0, 0.38, glow ? 0.4 : 0.62);
+          camera.lookAt(0, glow ? 0.38 : 0.22, glow ? 0.4 : 0.05);
           if (glow) gl.toneMappingExposure = 1.12;
         }}
       >
@@ -775,7 +775,7 @@ export function TurtleStage({
         ))}
         <Swim phase={phase}>
           <TrueSize enabled={trueSize} screenWidthCm={screenWidthCm}>
-            <group rotation={glow ? [0.1, -0.48, 0] : [0.18, 0.32, 0]}>
+            <group position={glow ? [0, 0, 0] : [0.12, -0.02, 0]} rotation={glow ? [0.1, -0.48, 0] : [0.06, -0.38, 0]}>
               <TurtleModel
                 anim={shownAnim}
                 face={face}
