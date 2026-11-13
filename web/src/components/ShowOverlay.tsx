@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useDebug } from "@/debug";
 import { useGuide } from "@/state";
 
 export function ShowOverlay() {
+  const debug = useDebug();
   const { show, clockOffset, myCorrect, remediation, dismissRemediation, send, zones } = useGuide();
   const [now, setNow] = useState(Date.now());
   const [picked, setPicked] = useState<number | null>(null);
@@ -30,13 +32,17 @@ export function ShowOverlay() {
 
   if (!show && remediation) {
     return (
-      <div className="fixed inset-0 z-40 grid place-items-end bg-black/70 p-4">
-        <article className="mx-auto w-full max-w-[480px] rounded-3xl bg-lagoon p-5">
-          <p className="text-sm text-sand">{remediation.strategyLabel}</p>
+      <div className="fixed inset-0 z-40 grid place-items-end bg-ink/45 p-4">
+        <article className="mx-auto w-full max-w-[480px] rounded-3xl bg-white p-5 text-ink">
+          <p className="text-base font-semibold text-tide">小綠補充一下</p>
           <h2 className="mt-1 font-serif text-2xl">{remediation.conceptTitle}</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">{remediation.reason}</p>
-          <p className="mt-4 leading-8">{remediation.text}</p>
-          <Button className="mt-5 w-full" onClick={dismissRemediation}>
+          {debug && (
+            <p className="mt-2 text-base leading-7 text-muted">
+              {remediation.strategyLabel}。{remediation.reason}
+            </p>
+          )}
+          <p className="mt-4 text-lg leading-8">{remediation.text}</p>
+          <Button className="mt-5 w-full" size="lg" onClick={dismissRemediation}>
             我看完了
           </Button>
         </article>
@@ -49,9 +55,9 @@ export function ShowOverlay() {
   const zoneName = zones.find((zone) => zone.id === show.zoneId)?.name ?? "展區";
 
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-abyss/95 px-4 py-6">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-sea px-4 py-6">
       <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
-        <p className="text-sm text-sand">
+        <p className="text-base font-semibold text-tide">
           {show.mode === "solo" ? "一對一" : "團體挑戰"} · {zoneName}
         </p>
         <p className="mt-2 font-serif text-5xl tabular-nums" aria-live="polite">
@@ -66,6 +72,7 @@ export function ShowOverlay() {
               <Button
                 key={choice}
                 variant={correct ? "default" : "ghost"}
+                size="lg"
                 className="h-auto justify-start whitespace-normal rounded-2xl py-3 text-left"
                 disabled={show.phase !== "answer" || sent}
                 onClick={() => {
@@ -83,14 +90,14 @@ export function ShowOverlay() {
             );
           })}
         </div>
-        <div className="mt-4 text-sm leading-7 text-muted">
+        <div className="mt-4 text-lg leading-8 text-muted">
           {show.phase === "announce" && "題目先看，倒數結束就能作答。"}
           {show.phase === "answer" && !sent && "在手機上作答，結果會出現在展示箱。"}
           {show.phase === "answer" && sent && "已送出，看看展示箱的統計。"}
           {show.phase === "results" && (myCorrect == null ? "統計中。" : myCorrect ? "你答對了。" : "這題先記下來，等一下有你的補充。")}
           {show.phase === "explain" && show.explain && (
             <p>
-              <span className="text-foam">{show.explain.headline}。</span>
+              <span className="font-semibold text-ink">{show.explain.headline}。</span>
               {show.explain.text}
             </p>
           )}

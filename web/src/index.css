@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-abyss: #04151c;
-  --color-deep: #07202b;
-  --color-lagoon: #0e3342;
-  --color-foam: #e7f6f3;
-  --color-muted: #93b8b8;
-  --color-teal: #3ee0c5;
-  --color-sand: #f3e0b8;
-  --color-coral: #ff7d6e;
-  --color-gold: #e6c27a;
+  --color-sea: #e4f3f1;
+  --color-ink: #0c2e32;
+  --color-tide: #0c6b64;
+  --color-tide-deep: #084e49;
+  --color-foam: #fbfffe;
+  --color-muted: #3c5a5e;
+  --color-sand: #f6edd9;
+  --color-coral: #b42318;
+  --color-gold: #8a5a12;
+  --color-abyss: #0c2e32;
+  --color-lagoon: #ffffff;
+  --color-deep: #d5eeeb;
+  --color-teal: #0c6b64;
   --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   --font-serif: "Noto Serif TC", "Songti TC", serif;
 }
@@ -23,39 +27,58 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(900px 420px at 50% -10%, rgba(62, 224, 197, 0.16), transparent 55%),
-    radial-gradient(700px 380px at 100% 100%, rgba(255, 125, 110, 0.08), transparent 42%),
-    var(--color-abyss);
-  color: var(--color-foam);
+    radial-gradient(720px 320px at 50% -12%, rgba(12, 107, 100, 0.14), transparent 62%),
+    var(--color-sea);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font-family: inherit;
 }
 
 .porthole {
   position: relative;
-  width: min(100%, 320px);
+  width: min(100%, 280px);
   aspect-ratio: 1;
   margin: 0 auto;
   overflow: hidden;
-  border: 10px solid #e6d3ae;
+  border: 8px solid #f6edd9;
   border-radius: 999px;
-  background: radial-gradient(circle at 50% 42%, #14627a, #04202b 72%);
+  background: radial-gradient(circle at 50% 42%, #1a7590, #062833 74%);
   box-shadow:
-    inset 0 0 40px rgba(0, 0, 0, 0.45),
-    0 18px 40px rgba(0, 0, 0, 0.35);
+    inset 0 0 28px rgba(0, 0, 0, 0.35),
+    0 10px 24px rgba(12, 46, 50, 0.12);
 }
 
 .porthole .water {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(115deg, transparent 0 16px, rgba(255, 255, 255, 0.045) 16px 18px);
+  background: repeating-linear-gradient(115deg, transparent 0 16px, rgba(255, 255, 255, 0.05) 16px 18px);
   animation: drift 9s linear infinite;
   pointer-events: none;
+}
+
+.card {
+  border-radius: 24px;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(12, 46, 50, 0.06);
+}
+
+.soft-in {
+  animation: soft-in 0.45s ease both;
+}
+
+.soft-press {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.soft-press:active {
+  transform: scale(0.98);
 }
 
 @keyframes drift {
@@ -64,8 +87,26 @@ textarea {
   }
 }
 
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .porthole .water {
+  .porthole .water,
+  .soft-in,
+  .soft-press {
     animation: none;
+    transition: none;
+  }
+
+  .soft-press:active {
+    transform: none;
   }
 }

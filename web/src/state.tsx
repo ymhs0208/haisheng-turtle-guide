@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { SWIM_MS } from "@scene/timing";
+import type { TurtleExpression } from "@scene/TurtleStage";
 import { api } from "./api";
 import type { Meta, Remediation, Session, ShowView, Summary, TurtleAnim, Zone } from "./types";
 
@@ -16,6 +17,7 @@ interface GuideState {
   connected: boolean;
   turtlePhase: "idle" | "exit" | "enter" | "off";
   anim: TurtleAnim;
+  expression: TurtleExpression;
   emphasis: "replay" | "none";
   quality: "low" | "high";
   show: ShowView | null;
@@ -29,7 +31,7 @@ interface GuideState {
   adopt: (session: Session) => void;
   logout: () => void;
   selectZone: (zoneId: string) => Promise<void>;
-  setAnim: (anim: TurtleAnim, emphasis?: "replay" | "none") => void;
+  setAnim: (anim: TurtleAnim, emphasis?: "replay" | "none", expression?: TurtleExpression) => void;
   setQuality: (quality: "low" | "high") => void;
   send: (message: object) => boolean;
   dismissRemediation: () => void;
@@ -60,6 +62,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [turtlePhase, setTurtlePhase] = useState<GuideState["turtlePhase"]>("idle");
   const [anim, setAnimState] = useState<TurtleAnim>("idle");
+  const [expression, setExpression] = useState<TurtleExpression>("auto");
   const [emphasis, setEmphasis] = useState<"replay" | "none">("none");
   const [quality, setQualityState] = useState<"low" | "high">("high");
   const [show, setShow] = useState<ShowView | null>(null);
@@ -181,6 +184,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
           setRemediation(msg as Remediation);
           setAnimState(msg.anim ?? "talk");
           setEmphasis(msg.emphasis ?? "none");
+          setExpression("sad");
         }
       };
       socket.onclose = () => {
@@ -242,9 +246,10 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const setAnim = useCallback((next: TurtleAnim, nextEmphasis: "replay" | "none" = "none") => {
+  const setAnim = useCallback((next: TurtleAnim, nextEmphasis: "replay" | "none" = "none", nextExpression: TurtleExpression = "auto") => {
     setAnimState(next);
     setEmphasis(nextEmphasis);
+    setExpression(nextExpression);
   }, []);
 
   const setQuality = useCallback((next: "low" | "high") => {
@@ -263,6 +268,7 @@ export function GuideProvider({ children }: { children: ReactNode }) {
     connected,
     turtlePhase,
     anim,
+    expression,
     emphasis,
     quality,
     show,

@@ -20,5 +20,5 @@ export function JoinPage() {
       .catch(() => setError("這張票券失效了，請重新開始一趟導覽。"));
   }, [id, adopt, navigate]);
 
-  return <main className="grid min-h-screen place-items-center px-6 text-center">{error || "正在接上你的行程…"}</main>;
+  return <main className="grid min-h-screen place-items-center px-6 text-center text-lg text-ink">{error || "正在接上你的行程…"}</main>;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Volume2 } from "lucide-react";
+import { Porthole } from "@/components/Porthole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/api";
@@ -10,6 +11,8 @@ interface ChatMessage {
   content: string;
   sources?: { id: string; title: string }[];
 }
+
+const CHIPS = ["你好", "珊瑚為什麼會白化？", "海龜吃什麼？"];
 
 export function ChatPage() {
   const { session, setAnim } = useGuide();
@@ -86,28 +89,45 @@ export function ChatPage() {
   }
 
   return (
-    <div className="grid gap-3">
-      <h1 className="font-serif text-3xl">跟小綠說</h1>
-      <div className="grid min-h-[46vh] gap-3">
-        {messages.length === 0 && <p className="leading-7 text-muted">可以問我珊瑚為什麼變白，或只是打聲招呼。</p>}
+    <div className="soft-in grid gap-4">
+      <header>
+        <h1 className="font-serif text-3xl">問小綠</h1>
+        <p className="mt-1 text-base text-muted">點一個問題，或自己打一句。</p>
+      </header>
+      <Porthole size="sm" />
+      <div className="grid min-h-[28vh] gap-3">
+        {messages.length === 0 && <p className="text-lg leading-8 text-muted">可以問珊瑚、海龜，也可以先說聲你好。</p>}
         {messages.map((message, index) => (
-          <article key={`${message.role}-${index}`} className={message.role === "user" ? "ml-8 rounded-3xl bg-teal text-abyss px-4 py-3" : "mr-6 rounded-3xl bg-lagoon px-4 py-3"}>
-            <p className="whitespace-pre-wrap leading-7">{message.content}</p>
+          <article key={`${message.role}-${index}`} className={message.role === "user" ? "ml-8 rounded-3xl bg-tide px-4 py-3 text-lg leading-8 text-white" : "mr-6 rounded-3xl bg-white px-4 py-3 text-lg leading-8 shadow-sm"}>
+            <p className="whitespace-pre-wrap">{message.content}</p>
             {message.sources && message.sources.length > 0 && (
-              <p className="mt-2 text-xs text-sand">依據：{message.sources.map((item) => item.title).join("、")}</p>
+              <p className="mt-2 text-base text-muted">依據：{message.sources.map((item) => item.title).join("、")}</p>
             )}
             {message.role === "assistant" && (
-              <button className="mt-2 inline-flex items-center gap-1 text-xs text-sand" onClick={() => speak(message.content)}>
-                <Volume2 className="h-3.5 w-3.5" /> 朗讀
+              <button className="mt-2 inline-flex min-h-11 items-center gap-1 text-base font-semibold text-tide" onClick={() => speak(message.content)}>
+                <Volume2 className="h-4 w-4" /> 聽一次
               </button>
             )}
           </article>
         ))}
-        {pending && <p className="text-sm text-muted">小綠在想…</p>}
+        {pending && <p className="text-base text-muted">小綠在想…</p>}
         <div ref={bottomRef} />
       </div>
-      {error && <p className="text-sm text-coral">{error}</p>}
-      {!speechOk && <p className="text-xs text-muted">這個瀏覽器沒有語音辨識，可以直接打字。</p>}
+      {error && <p className="text-base text-coral">{error}</p>}
+      {!speechOk && <p className="text-base text-muted">這個瀏覽器不能用語音，直接打字就好。</p>}
+      <div className="flex flex-wrap gap-2">
+        {CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            disabled={pending}
+            className="soft-press min-h-12 rounded-full bg-white px-4 text-base font-semibold text-ink ring-1 ring-tide/15 disabled:opacity-40"
+            onClick={() => void send(chip)}
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
       <form
         className="flex gap-2"
         onSubmit={(event) => {
@@ -115,9 +135,9 @@ export function ChatPage() {
           void send(text);
         }}
       >
-        <Input value={text} maxLength={500} placeholder="問海龜、珊瑚或深海" onChange={(event) => setText(event.target.value)} />
+        <Input value={text} maxLength={500} placeholder="想問小綠什麼？" onChange={(event) => setText(event.target.value)} />
         {speechOk && (
-          <Button type="button" variant={listening ? "danger" : "ghost"} size="icon" aria-label={listening ? "停止說話" : "按住說話"} onClick={toggleMic}>
+          <Button type="button" variant={listening ? "danger" : "ghost"} size="icon" aria-label={listening ? "停止說話" : "用語音問"} onClick={toggleMic}>
             <Mic className="h-5 w-5" />
           </Button>
         )}
