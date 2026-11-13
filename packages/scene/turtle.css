@@ -1,4 +1,5 @@
 .turtle-svg { width: 100%; height: 100%; }
+.turtle-svg.glow { filter: drop-shadow(0 0 10px #e6ff8a); }
 .turtle-svg .flip-r { transform-origin: 18% 50%; }
 .turtle-svg.anim-wave .flip-r { animation: turtle-wave 0.45s ease-in-out infinite; }
 .turtle-svg.anim-talk .mouth { animation: turtle-mouth 0.28s ease-in-out infinite; transform-origin: center; }

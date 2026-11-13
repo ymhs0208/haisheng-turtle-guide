@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { SWIM_MS } from "@scene/timing";
 import { api } from "./api";
 import type { Meta, Remediation, Session, ShowView, Summary, TurtleAnim, Zone } from "./types";
 
@@ -154,11 +155,11 @@ export function GuideProvider({ children }: { children: ReactNode }) {
           window.clearTimeout(awayTimer.current);
           if (msg.action === "exit") {
             setTurtlePhase("exit");
-            awayTimer.current = window.setTimeout(() => setTurtlePhase("off"), 1200);
+            awayTimer.current = window.setTimeout(() => setTurtlePhase("off"), SWIM_MS);
           }
           if (msg.action === "enter") {
             setTurtlePhase("enter");
-            awayTimer.current = window.setTimeout(() => setTurtlePhase("idle"), 1200);
+            awayTimer.current = window.setTimeout(() => setTurtlePhase("idle"), SWIM_MS);
           }
         }
         if (msg.type === "show_state") {

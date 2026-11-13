@@ -8,6 +8,9 @@ import { answerChat } from "./rag.js";
 import { touchZone } from "./session-logic.js";
 import type { Store } from "./store.js";
 
+/** Keep this aligned with packages/scene/timing.ts. */
+const SWIM_MS = 2400;
+
 type Role = "phone" | "display";
 type Phase = "announce" | "answer" | "results" | "explain" | "done";
 
@@ -205,7 +208,7 @@ export class Hub {
         if (gen !== this.turtleGen) return;
         this.emitTurtle({ v: 1, type: "turtle", who: "box", action: "enter", sessionId: session.id, nickname, zoneId });
         this.pushPresence(zoneId);
-      }, 1100),
+      }, SWIM_MS),
     );
   }
 
@@ -224,7 +227,7 @@ export class Hub {
         this.spot = { holder: "box", sessionId: null, nickname: "小綠", zoneId };
         this.emitTurtle({ v: 1, type: "turtle", who: "phone", action: "enter", sessionId: owner, nickname, zoneId });
         this.emitTurtle({ v: 1, type: "turtle", who: "box", action: "enter", sessionId: null, nickname: "小綠", zoneId });
-      }, 1100),
+      }, SWIM_MS),
     );
   }
 
