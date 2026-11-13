@@ -99,7 +99,7 @@ export function App() {
   const [calibrate, setCalibrate] = useState(params.get("cal") === "1");
   const [quality, setQuality] = useState<"low" | "high">(readQuality);
   const [trueSize, setTrueSize] = useState(readFlag("truesize", "display-truesize"));
-  const [bandVh, setBandVh] = useState(readNumber("band", "display-band", 42, 24, 68));
+  const [bandVh, setBandVh] = useState(readNumber("band", "display-band", 48, 24, 68));
   const [widthCm, setWidthCm] = useState(readNumber("widthCm", "display-width-cm", 80, 15, 250));
   const [hud, setHud] = useState(params.get("clean") !== "1");
   const phaseTimer = useRef(0);
@@ -307,7 +307,7 @@ export function App() {
           screenWidthCm={widthCm}
         />
       </div>
-      <section className="band">
+      <section className={online && show ? "band is-show" : "band"}>
         {calibrate ? (
           <p className="kicker">校正 · 這一段文字和海龜會一起鏡像、一起上下翻轉</p>
         ) : (

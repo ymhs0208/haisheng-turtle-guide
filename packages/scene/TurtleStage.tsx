@@ -107,7 +107,7 @@ function Caustics({ low, still }: { low: boolean; still: boolean }) {
   return (
     <mesh position={[0, -1.2, -0.5]} rotation={[-Math.PI / 2.35, 0, 0]}>
       <planeGeometry args={[low ? 6 : 9, low ? 6 : 9]} />
-      <meshBasicMaterial map={map} transparent opacity={low ? 0.2 : 0.34} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial map={map} transparent opacity={low ? 0.28 : 0.5} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
     </mesh>
   );
 }
@@ -140,7 +140,7 @@ function TrueSize({
       group.scale.setScalar(1);
       return;
     }
-    const distance = Math.abs(camera.position.z);
+    const distance = camera.position.length();
     const visibleH = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
     const shellPx = CARAPACE_CM * (size.width / Math.max(10, screenWidthCm));
     const shellWorld = visibleH * (shellPx / size.height);
@@ -219,9 +219,9 @@ function TurtleModel({
   return (
     <group ref={body}>
       {glow && (
-        <mesh position={[0, 0.12, -0.05]} scale={[1.34, 0.68, 1.6]}>
+        <mesh position={[0, 0.12, -0.05]} scale={[1.26, 0.6, 1.5]}>
           <sphereGeometry args={[1, Math.max(8, seg - 4), Math.max(8, seg - 4)]} />
-          <meshBasicMaterial color="#eaffc2" side={THREE.BackSide} transparent opacity={0.55} depthWrite={false} />
+          <meshBasicMaterial color="#d8ffb0" side={THREE.BackSide} transparent opacity={0.28} depthWrite={false} />
         </mesh>
       )}
       <mesh position={[0, 0.12, -0.05]} scale={[1.18, 0.52, 1.42]}>
@@ -385,13 +385,16 @@ export function TurtleStage({
       <Canvas
         frameloop={phase === "off" || capped ? "demand" : "always"}
         dpr={quality === "low" ? 1 : capped ? [1, 1.25] : [1, 1.6]}
-        camera={{ position: [0, 0.28, 4.5], fov: 35 }}
+        camera={{ position: glow ? [2.15, 1.45, 3.7] : [0, 0.28, 4.5], fov: glow ? 32 : 35 }}
         gl={{
           alpha: transparent,
           antialias: quality !== "low",
           powerPreference: quality === "low" ? "low-power" : "default",
         }}
-        onCreated={({ gl }) => gl.setClearColor("#000000", transparent ? 0 : 1)}
+        onCreated={({ gl, camera }) => {
+          gl.setClearColor("#000000", transparent ? 0 : 1);
+          camera.lookAt(0, 0.05, 0.1);
+        }}
       >
         {capped && <FpsCap fps={fps} />}
         {glow ? (
@@ -414,6 +417,7 @@ export function TurtleStage({
         ))}
         <Swim phase={phase}>
           <TrueSize enabled={trueSize} screenWidthCm={screenWidthCm}>
+            <group rotation={glow ? [0.18, -0.65, 0] : [0, 0, 0]}>
             <TurtleModel
               anim={reduced ? "idle" : anim}
               quality={quality}
@@ -422,6 +426,7 @@ export function TurtleStage({
               tempo={reduced ? 0.45 : tempo}
               glow={glow}
             />
+            </group>
           </TrueSize>
         </Swim>
       </Canvas>

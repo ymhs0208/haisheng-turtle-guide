@@ -9,14 +9,15 @@ body,
 }
 
 .root {
-  height: 100%;
-  min-height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   background: #000;
   overflow: hidden;
 }
 
 .ghost {
   height: 100%;
+  max-height: 100%;
   background: #000;
   display: flex;
   flex-direction: column;
@@ -38,7 +39,7 @@ body,
 
 .stage {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   background: #000;
   overflow: hidden;
@@ -53,9 +54,10 @@ body,
 }
 
 .band {
-  flex: 0 0 var(--band, 42vh);
+  flex: 0 0 var(--band, 48vh);
+  max-height: var(--band, 48vh);
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   background: #000;
   color: #fff;
   padding: 1.2vh 5vw 2vh;
@@ -71,18 +73,18 @@ body,
 }
 
 h1 {
-  margin: 0.15em 0 0;
+  margin: 0.12em 0 0;
   font-family: "Noto Serif TC", serif;
   font-weight: 700;
-  font-size: clamp(40px, 5.6vw, 88px);
+  font-size: clamp(28px, 3.6vw, 52px);
   line-height: 1.2;
   color: #fff;
 }
 
 .prompt {
-  margin: 0.35em 0 0;
-  font-size: clamp(28px, 3.3vw, 52px);
-  line-height: 1.4;
+  margin: 0.28em 0 0;
+  font-size: clamp(20px, 2.1vw, 30px);
+  line-height: 1.35;
   color: #fff;
 }
 
@@ -90,6 +92,71 @@ h1 {
   display: grid;
   gap: 0.45rem;
   margin-top: 0.8rem;
+}
+
+.band.is-show {
+  display: flex;
+  flex-direction: column;
+}
+
+.band.is-show .kicker {
+  flex: 0 0 auto;
+  font-size: clamp(15px, 1.5vw, 22px);
+}
+
+.band.is-show h1 {
+  flex: 0 0 auto;
+  margin-top: 0.06em;
+  font-size: clamp(22px, 2.4vw, 36px);
+  line-height: 1.15;
+}
+
+.band.is-show .prompt,
+.band.is-show .explain {
+  flex: 0 1 auto;
+  max-height: 2.7em;
+  margin-top: 0.15em;
+  overflow: hidden;
+  font-size: clamp(16px, 1.45vw, 22px);
+  line-height: 1.3;
+}
+
+.band.is-show .choices {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.35rem;
+  gap: 0.2rem;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.band.is-show .choice {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.band.is-show .choice .label {
+  font-size: clamp(15px, 1.3vw, 20px);
+  line-height: 1.2;
+}
+
+.band.is-show .choice .label span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.band.is-show .bar {
+  height: 6px;
+  margin-top: 0.1rem;
+}
+
+.band.is-show .sample {
+  display: none;
 }
 
 .choice {
@@ -100,7 +167,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  font-size: clamp(24px, 2.6vw, 40px);
+  font-size: clamp(18px, 1.7vw, 26px);
   font-weight: 700;
 }
 
