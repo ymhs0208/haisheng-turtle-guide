@@ -20,8 +20,15 @@ export interface Ranked {
   score: number;
 }
 
-const THRESHOLD = 0.48;
-const KEYWORD_FLOOR = 0.4;
+const THRESHOLD = 0.45;
+const COVERAGE_FLOOR = 0.28;
+
+export function queryCoverage(query: string, text: string): number {
+  const wanted = [...new Set(textTokens(query).filter((token) => token.length >= 2))];
+  if (wanted.length === 0) return 0;
+  const have = new Set(textTokens(text));
+  return wanted.filter((token) => have.has(token)).length / wanted.length;
+}
 const ZONE_BOOST = 0.08;
 
 export function textTokens(text: string): string[] {
@@ -76,7 +83,8 @@ export function rankChunks(query: string, queryVector: number[], chunks: RankInp
   const ranked: Ranked[] = chunks.map((chunk) => {
     const raw = cosine(queryVector, chunk.embedding);
     const keyword = keywords.get(chunk.id) ?? 0;
-    const hybrid = raw * 0.72 + keyword * 0.28;
+    const coverage = queryCoverage(query, `${chunk.title}\n${chunk.body}`);
+    const hybrid = raw * 0.62 + keyword * 0.18 + coverage * 0.2;
     const score = hybrid + (zoneId && chunk.zoneId === zoneId ? ZONE_BOOST : 0);
     return { ...chunk, raw, keyword, score };
   });
@@ -86,7 +94,8 @@ export function rankChunks(query: string, queryVector: number[], chunks: RankInp
   const preferZone = Boolean(zoneId) && bestZone >= THRESHOLD && bestZone + 0.02 >= bestAny;
   const pool = preferZone ? inZone : ranked;
   return pool
-    .filter((item) => item.raw >= THRESHOLD && item.keyword >= KEYWORD_FLOOR)
+    .map((item) => ({ ...item, keyword: queryCoverage(query, `${item.title}\n${item.body}`) }))
+    .filter((item) => item.raw >= THRESHOLD && item.keyword >= COVERAGE_FLOOR)
     .sort((a, b) => b.score - a.score || b.raw - a.raw)
     .slice(0, k);
 }
