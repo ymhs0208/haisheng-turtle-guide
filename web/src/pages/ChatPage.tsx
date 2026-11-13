@@ -4,22 +4,33 @@ import { Porthole } from "@/components/Porthole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/api";
+import { useDebug } from "@/debug";
 import { useGuide } from "@/state";
+
+interface ChatSource {
+  id: string;
+  title: string;
+  snippet?: string;
+  url?: string;
+}
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  sources?: { id: string; title: string }[];
+  sources?: ChatSource[];
+  provider?: string;
 }
 
 const CHIPS = ["你好", "珊瑚為什麼會白化？", "海龜吃什麼？"];
 
 export function ChatPage() {
+  const debug = useDebug();
   const { session, setAnim } = useGuide();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [openSource, setOpenSource] = useState("");
   const [listening, setListening] = useState(false);
   const recRef = useRef<SpeechRecognition | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -43,15 +54,65 @@ export function ChatPage() {
     setMessages((list) => [...list, { role: "user", content: message.trim() }]);
     setPending(true);
     setAnim("think");
+    const placeholder: ChatMessage = { role: "assistant", content: "" };
+    setMessages((list) => [...list, placeholder]);
     try {
-      const data = await api<{ reply: string; sources: { id: string; title: string }[] }>(`/api/sessions/${session.id}/chat`, {
+      const response = await fetch(`/api/sessions/${session.id}/chat/stream`, {
         method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ message }),
       });
-      setMessages((list) => [...list, { role: "assistant", content: data.reply, sources: data.sources }]);
+      if (!response.ok || !response.body) {
+        const raw = await response.text();
+        let reason = "小綠沒有接到";
+        try {
+          reason = (JSON.parse(raw) as { error?: string }).error || reason;
+        } catch {
+          reason = raw || reason;
+        }
+        throw new Error(reason);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reply = "";
+      let sources: ChatSource[] = [];
+      let provider = "";
+      const paint = (next: Partial<ChatMessage>) => {
+        setMessages((list) => list.map((item, index) => (index === list.length - 1 && item.role === "assistant" ? { ...item, ...next } : item)));
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() ?? "";
+        for (const frame of frames) {
+          const line = frame.split("\n").find((item) => item.startsWith("data:"));
+          if (!line) continue;
+          const event = JSON.parse(line.slice(5).trim()) as {
+            type?: string;
+            text?: string;
+            reply?: string;
+            sources?: ChatSource[];
+            provider?: string;
+          };
+          if (event.type === "delta" && event.text) {
+            reply += event.text;
+            paint({ content: reply });
+          }
+          if (event.type === "done") {
+            reply = event.reply || reply;
+            sources = event.sources ?? [];
+            provider = event.provider ?? "";
+            paint({ content: reply, sources, provider });
+          }
+        }
+      }
       setAnim("talk");
       window.setTimeout(() => setAnim("idle"), 2600);
     } catch (err) {
+      setMessages((list) => list.filter((item) => item.content || item.role === "user"));
       setError(err instanceof Error ? err.message : "小綠沒有接到");
       setAnim("idle");
     } finally {
@@ -101,7 +162,26 @@ export function ChatPage() {
           <article key={`${message.role}-${index}`} className={message.role === "user" ? "ml-8 rounded-3xl bg-tide px-4 py-3 text-lg leading-8 text-white" : "mr-6 rounded-3xl bg-white px-4 py-3 text-lg leading-8 shadow-sm"}>
             <p className="whitespace-pre-wrap">{message.content}</p>
             {message.sources && message.sources.length > 0 && (
-              <p className="mt-2 text-base text-muted">依據：{message.sources.map((item) => item.title).join("、")}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {message.sources.map((source, sourceIndex) => {
+                  const key = `${index}-${source.id}`;
+                  const open = openSource === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className="min-h-11 rounded-full bg-deep px-3 text-left text-base font-semibold text-tide"
+                      onClick={() => setOpenSource(open ? "" : key)}
+                    >
+                      [{sourceIndex + 1}] {source.title}
+                      {open && source.snippet && <span className="mt-1 block font-normal text-ink">{source.snippet}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {debug && message.provider?.startsWith("mock") && (
+              <p className="mt-2 text-base text-muted">示範回答：沒有設定模型金鑰，這段來自館內樣本。</p>
             )}
             {message.role === "assistant" && (
               <button className="mt-2 inline-flex min-h-11 items-center gap-1 text-base font-semibold text-tide" onClick={() => speak(message.content)}>
