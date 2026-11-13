@@ -47,22 +47,28 @@ export interface AppConfig {
   openaiBase: string;
   openaiModel: string;
   embeddingModel: string;
+  embedDim: number;
   allowGroupOverride: boolean;
   adminToken: string;
 }
 
 export function getConfig(): AppConfig {
-  const llmProvider = process.env.LLM_PROVIDER === "openai" ? "openai" : "mock";
-  const embeddingProvider = process.env.EMBEDDING_PROVIDER === "openai" ? "openai" : "local";
+  const key = (process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "").trim();
+  const forcedMock = process.env.LLM_PROVIDER === "mock";
+  const llmProvider = key && !forcedMock ? "openai" : "mock";
+  const embedRemote = llmProvider === "openai" && process.env.EMBEDDING_PROVIDER !== "local";
+  const embeddingProvider = embedRemote ? "openai" : "local";
+  const embedDim = Number(process.env.EMBED_DIM || (embeddingProvider === "local" ? 64 : 1536));
   return {
     port: Number(process.env.PORT || 43125),
     databaseUrl: process.env.DATABASE_URL?.trim() || "",
     llmProvider,
     embeddingProvider,
-    openaiKey: process.env.OPENAI_API_KEY?.trim() || "",
-    openaiBase: (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, ""),
-    openaiModel: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    embeddingModel: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+    openaiKey: key,
+    openaiBase: (process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, ""),
+    openaiModel: process.env.LLM_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
+    embeddingModel: process.env.EMBED_MODEL || process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+    embedDim: Number.isFinite(embedDim) && embedDim > 0 ? embedDim : 64,
     allowGroupOverride: process.env.ALLOW_GROUP_OVERRIDE !== "0",
     adminToken: process.env.ADMIN_TOKEN?.trim() || "",
   };
