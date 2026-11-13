@@ -1,14 +1,34 @@
 .turtle-svg { width: 100%; height: 100%; }
-.turtle-svg.glow { filter: drop-shadow(0 0 10px #e6ff8a); }
-.turtle-svg .flip-r { transform-origin: 18% 50%; }
+.turtle-svg.glow { filter: drop-shadow(0 0 12px #e6ff8a); }
+.turtle-svg .flip-r { transform-origin: 30% 50%; }
+.turtle-svg .head { transform-origin: 62% 70%; }
+.turtle-svg .eyes { transform-box: fill-box; transform-origin: center; }
+.turtle-svg .frown,
+.turtle-svg .open { display: none; }
+.turtle-svg.anim-idle .body { animation: turtle-bob 3.2s ease-in-out infinite; transform-origin: center; }
+.turtle-svg.anim-idle .head { animation: turtle-tilt 3.4s ease-in-out infinite; }
+.turtle-svg.anim-idle .flip-r { animation: turtle-wiggle 1.05s ease-in-out infinite; }
+.turtle-svg.anim-idle .eyes { animation: turtle-blink 4.2s infinite; }
 .turtle-svg.anim-wave .flip-r { animation: turtle-wave 0.45s ease-in-out infinite; }
-.turtle-svg.anim-talk .mouth { animation: turtle-mouth 0.28s ease-in-out infinite; transform-origin: center; }
-.turtle-svg.anim-point .flip-r { transform: rotate(-42deg); }
-.turtle-svg.anim-think { transform: rotate(-8deg); transform-origin: 50% 60%; }
-.turtle-svg.anim-idle .body { animation: turtle-bob 2.8s ease-in-out infinite; transform-origin: center; }
-@keyframes turtle-wave { 50% { transform: rotate(-34deg) translateY(-10px); } }
+.turtle-svg.anim-wave .eyes { transform: scaleY(0.45); }
+.turtle-svg.anim-talk .smile { display: none; }
+.turtle-svg.anim-talk .open { display: inline; animation: turtle-mouth 0.28s ease-in-out infinite; transform-origin: center; }
+.turtle-svg.anim-point .flip-r { transform: rotate(-48deg); }
+.turtle-svg.anim-think .head { transform: rotate(-14deg); }
+.turtle-svg.anim-think .smile,
+.turtle-svg.face-sad .smile { display: none; }
+.turtle-svg.anim-think .frown,
+.turtle-svg.face-sad .frown { display: inline; }
+.turtle-svg.face-happy .eyes { transform: scaleY(0.45); }
+@keyframes turtle-wave { 50% { transform: rotate(-48deg) translateY(-8px); } }
 @keyframes turtle-mouth { 50% { transform: scaleY(0.35); } }
-@keyframes turtle-bob { 50% { transform: translateY(4px); } }
+@keyframes turtle-bob { 50% { transform: translateY(5px); } }
+@keyframes turtle-tilt { 50% { transform: rotate(-8deg); } }
+@keyframes turtle-wiggle { 50% { transform: rotate(-18deg) translateY(-3px); } }
+@keyframes turtle-blink {
+  0%, 86%, 100% { transform: scaleY(1); }
+  90%, 93% { transform: scaleY(0.12); }
+}
 @media (prefers-reduced-motion: reduce) {
   .turtle-svg, .turtle-svg * { animation: none !important; }
 }
