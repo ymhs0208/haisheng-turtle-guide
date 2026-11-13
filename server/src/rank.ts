@@ -20,7 +20,8 @@ export interface Ranked {
   score: number;
 }
 
-const THRESHOLD = 0.18;
+const THRESHOLD = 0.48;
+const KEYWORD_FLOOR = 0.4;
 const ZONE_BOOST = 0.08;
 
 export function textTokens(text: string): string[] {
@@ -85,7 +86,7 @@ export function rankChunks(query: string, queryVector: number[], chunks: RankInp
   const preferZone = Boolean(zoneId) && bestZone >= THRESHOLD && bestZone + 0.02 >= bestAny;
   const pool = preferZone ? inZone : ranked;
   return pool
-    .filter((item) => item.raw >= THRESHOLD)
+    .filter((item) => item.raw >= THRESHOLD && item.keyword >= KEYWORD_FLOOR)
     .sort((a, b) => b.score - a.score || b.raw - a.raw)
     .slice(0, k);
 }
