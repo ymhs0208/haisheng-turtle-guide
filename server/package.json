@@ -6,7 +6,9 @@
     "dev": "node --watch --watch-path=./src --watch-path=../content --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "ingest": "node --import tsx src/ingest.ts",
+    "eval:rag": "node --import tsx src/eval-rag.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

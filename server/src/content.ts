@@ -1,18 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { chunkDocument, localEmbed } from "./embed.js";
-import { embedText } from "./llm.js";
+import { localEmbed } from "./embed.js";
 import type { Store } from "./store.js";
-import type {
-  AnswerKind,
-  Concept,
-  Question,
-  QuestionRole,
-  Seed,
-  StoredChunk,
-  Zone,
-} from "./types.js";
+import type { AnswerKind, Concept, Question, QuestionRole, Seed, Zone } from "./types.js";
 
 const STRATEGIES = ["animation", "hint", "analogy"] as const;
 
@@ -97,12 +88,8 @@ export function toPublicQuestion(question: Question, concept: { id: string; titl
 }
 
 export async function indexKnowledge(store: Store, seed: Seed): Promise<void> {
-  const chunks: StoredChunk[] = [];
-  for (const chunk of seed.chunks) {
-    const embedding = await embedText(chunkDocument(chunk.title, chunk.body, chunk.tags));
-    chunks.push({ ...chunk, embedding });
-  }
-  await store.replaceChunks(chunks);
+  const { buildIndexChunks } = await import("./ingest.js");
+  await store.replaceChunks(await buildIndexChunks(seed));
 }
 
 export class ContentRepo {

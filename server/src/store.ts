@@ -39,6 +39,7 @@ export interface Store {
   listOverrides(): Promise<ConceptOverride[]>;
   replaceChunks(chunks: StoredChunk[]): Promise<void>;
   searchChunks(embedding: number[], limit: number): Promise<ScoredChunk[]>;
+  listChunks(): Promise<StoredChunk[]>;
 }
 
 interface Snapshot {
@@ -217,6 +218,10 @@ export class MemoryStore implements Store {
       }))
       .sort((a, b) => b.raw - a.raw)
       .slice(0, limit);
+  }
+
+  async listChunks(): Promise<StoredChunk[]> {
+    return this.chunks.map((chunk) => ({ ...chunk, embedding: [...chunk.embedding] }));
   }
 }
 
@@ -532,6 +537,18 @@ export class PgStore implements Store {
       }))
       .sort((a, b) => b.raw - a.raw)
       .slice(0, limit);
+  }
+
+  async listChunks(): Promise<StoredChunk[]> {
+    const result = await this.db().query("SELECT id, zone_id, tags, title, body, embedding_json FROM chunks");
+    return result.rows.map((row) => ({
+      id: String(row.id),
+      zoneId: String(row.zone_id),
+      tags: row.tags as string[],
+      title: String(row.title),
+      body: String(row.body),
+      embedding: (row.embedding_json as number[]) ?? [],
+    }));
   }
 }
 
