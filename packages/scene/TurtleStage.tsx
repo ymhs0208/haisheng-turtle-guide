@@ -53,6 +53,18 @@ function makeToonRamp(): THREE.DataTexture {
   return texture;
 }
 
+function hexPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
 function makeShellTexture(low: boolean, glow: boolean): THREE.CanvasTexture {
   const size = low ? 128 : 256;
   const canvas = document.createElement("canvas");
@@ -61,21 +73,24 @@ function makeShellTexture(low: boolean, glow: boolean): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d");
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = low ? 1 : 4;
+  texture.anisotropy = low ? 1 : 8;
   if (!ctx) return texture;
-  ctx.fillStyle = glow ? "#5dffb0" : "#8fd9bc";
+  ctx.fillStyle = glow ? "#7dffc4" : "#4ef0b0";
   ctx.fillRect(0, 0, size, size);
-  const spots: { x: number; y: number; rx: number; ry: number; color: string }[] = [
-    { x: 0.5, y: 0.36, rx: 0.22, ry: 0.16, color: glow ? "#fff3a4" : "#fff6d4" },
-    { x: 0.28, y: 0.58, rx: 0.18, ry: 0.15, color: glow ? "#ffc4e0" : "#ffd4e6" },
-    { x: 0.73, y: 0.56, rx: 0.16, ry: 0.14, color: glow ? "#ffe08a" : "#ffe7b8" },
-    { x: 0.5, y: 0.74, rx: 0.2, ry: 0.13, color: glow ? "#e9fff8" : "#e5f8ff" },
-  ];
-  for (const spot of spots) {
-    ctx.fillStyle = spot.color;
-    ctx.beginPath();
-    ctx.ellipse(spot.x * size, spot.y * size, spot.rx * size, spot.ry * size, 0, 0, Math.PI * 2);
-    ctx.fill();
+  const colors = glow
+    ? ["#fff6b0", "#ffd0e6", "#e7fff8", "#ffe4b8", "#dff6ff"]
+    : ["#fff3c4", "#ffd6e8", "#e9fff6", "#ffe8c4", "#e4f7ff"];
+  const radius = size * 0.092;
+  const stepX = radius * 1.82;
+  const stepY = radius * 1.58;
+  let index = 0;
+  for (let row = -1; row < 9; row += 1) {
+    for (let col = -1; col < 9; col += 1) {
+      ctx.fillStyle = colors[index % colors.length] ?? colors[0];
+      hexPath(ctx, col * stepX + (row % 2) * stepX * 0.5, row * stepY, radius * 0.82);
+      ctx.fill();
+      index += 1;
+    }
   }
   return texture;
 }
@@ -245,37 +260,51 @@ function Eye({
   low: boolean;
   mats: {
     sclera: THREE.Material;
-    iris: THREE.Material;
     pupil: THREE.Material;
     sparkle: THREE.Material;
-    skin: THREE.Material;
+    sparkleSmall: THREE.Material;
   };
 }) {
-  const seg = low ? 14 : 18;
+  const seg = low ? 24 : 40;
+  const pupilSeg = low ? 28 : 48;
   return (
     <group position={position}>
       <group ref={ballRef}>
-        <mesh material={mats.sclera} scale={[0.2, 0.23, 0.16]}>
+        <mesh material={mats.sclera} scale={[0.22, 0.25, 0.2]} renderOrder={1}>
           <sphereGeometry args={[1, seg, seg]} />
         </mesh>
-        <group ref={lookRef} position={[0, -0.01, 0.08]}>
-          <mesh material={mats.iris} scale={[0.155, 0.17, 0.09]}>
-            <sphereGeometry args={[1, seg, seg]} />
-          </mesh>
-          <mesh material={mats.pupil} position={[0, 0, 0.04]} scale={[0.105, 0.115, 0.05]}>
-            <sphereGeometry args={[1, 10, 10]} />
+        <group ref={lookRef}>
+          <mesh material={mats.pupil} position={[0, -0.01, 0.214]} renderOrder={2}>
+            <circleGeometry args={[0.1, pupilSeg]} />
           </mesh>
         </group>
-        <mesh ref={sparkRef} material={mats.sparkle} position={[0.055, 0.07, 0.14]} scale={0.045}>
-          <sphereGeometry args={[1, 8, 8]} />
+        <mesh ref={sparkRef} material={mats.sparkle} position={[0.045, 0.055, 0.228]} renderOrder={3}>
+          <circleGeometry args={[0.028, 20]} />
         </mesh>
-        {!low && (
-          <mesh material={mats.sparkle} position={[-0.03, 0.02, 0.13]} scale={0.022}>
-            <sphereGeometry args={[1, 8, 8]} />
-          </mesh>
-        )}
+        <mesh material={mats.sparkleSmall} position={[-0.028, 0.012, 0.236]} renderOrder={4}>
+          <circleGeometry args={[0.014, 16]} />
+        </mesh>
       </group>
     </group>
+  );
+}
+
+function ShellHex({
+  position,
+  rotation,
+  color,
+  radius,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  color: string;
+  radius: number;
+}) {
+  return (
+    <mesh position={position} rotation={rotation} renderOrder={2}>
+      <cylinderGeometry args={[radius, radius, 0.045, 6]} />
+      <meshBasicMaterial color={color} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} toneMapped={false} />
+    </mesh>
   );
 }
 
@@ -304,59 +333,83 @@ function TurtleModel({
     const shellMap = makeShellTexture(low, glow);
     const mouths = makeMouthGeometry();
     const outline = new THREE.MeshBasicMaterial({
-      color: glow ? "#f6ffc8" : "#e9fff2",
+      color: glow ? "#c8ffd8" : "#1f8f68",
       side: THREE.BackSide,
       toneMapped: false,
     });
-    const skin = new THREE.MeshToonMaterial({
-      color: glow ? "#f4ff86" : "#e7f7bf",
-      gradientMap: ramp,
-      emissive: glow ? "#d6ee62" : "#d7eeae",
-      emissiveIntensity: glow ? 0.42 : 0.06,
+    const skin = new THREE.MeshStandardMaterial({
+      color: glow ? "#fff6d4" : "#fff6e4",
+      roughness: 0.42,
+      metalness: 0,
+      emissive: glow ? "#ffe3a4" : "#ffd7a4",
+      emissiveIntensity: glow ? 0.16 : 0.05,
     });
-    const shell = new THREE.MeshToonMaterial({
+    const shell = new THREE.MeshStandardMaterial({
       map: shellMap,
-      gradientMap: ramp,
-      emissive: glow ? "#3dcc78" : "#7ec9a4",
-      emissiveIntensity: glow ? 0.42 : 0.04,
+      color: "#ffffff",
+      roughness: 0.58,
+      metalness: 0,
+      emissive: glow ? "#6dffb8" : "#63e8aa",
+      emissiveIntensity: glow ? 0.22 : 0.1,
     });
-    const flipper = new THREE.MeshToonMaterial({
-      color: glow ? "#dcff6e" : "#c6ee90",
-      gradientMap: ramp,
-      emissive: glow ? "#c6ee58" : "#b4dc84",
-      emissiveIntensity: glow ? 0.36 : 0.1,
-    });
-    const belly = new THREE.MeshToonMaterial({
-      color: glow ? "#ffe7a6" : "#ffe6c4",
-      gradientMap: ramp,
-      emissive: glow ? "#e6c878" : "#f0d7b0",
+    const flipper = new THREE.MeshLambertMaterial({
+      color: glow ? "#d8ff78" : "#b6e888",
+      emissive: glow ? "#c6ee60" : "#b4dc84",
       emissiveIntensity: glow ? 0.3 : 0.08,
     });
-    const sclera = new THREE.MeshBasicMaterial({ color: "#fffdf8", toneMapped: false });
-    const iris = new THREE.MeshStandardMaterial({
-      color: glow ? "#16362e" : "#1b3330",
-      roughness: 0.16,
-      metalness: 0.28,
-      emissive: glow ? "#1e4a40" : "#102420",
-      emissiveIntensity: glow ? 0.45 : 0.15,
+    const belly = new THREE.MeshLambertMaterial({
+      color: glow ? "#fff0c4" : "#ffe8c8",
+      emissive: glow ? "#f0d090" : "#f3d7b0",
+      emissiveIntensity: glow ? 0.22 : 0.06,
     });
-    const pupil = new THREE.MeshStandardMaterial({
-      color: "#121416",
-      roughness: 0.12,
-      metalness: 0.4,
-      emissive: "#000000",
+    const sclera = new THREE.MeshLambertMaterial({
+      color: "#ffffff",
+      emissive: "#fffdf8",
+      emissiveIntensity: 0.35,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
-    const sparkle = new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false });
+    const pupil = new THREE.MeshBasicMaterial({
+      color: "#16181c",
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -4,
+      toneMapped: false,
+    });
+    const sparkle = new THREE.MeshBasicMaterial({
+      color: "#ffffff",
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      polygonOffsetUnits: -8,
+      toneMapped: false,
+    });
+    const sparkleSmall = new THREE.MeshBasicMaterial({
+      color: "#ffffff",
+      polygonOffset: true,
+      polygonOffsetFactor: -6,
+      polygonOffsetUnits: -12,
+      toneMapped: false,
+    });
     const blush = new THREE.MeshBasicMaterial({
       color: "#ff8eae",
       transparent: true,
       opacity: 0.82,
       depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
       toneMapped: false,
     });
-    const mouth = new THREE.MeshBasicMaterial({ color: glow ? "#ff7aa2" : "#a14b62", toneMapped: !glow });
-    const tongue = new THREE.MeshBasicMaterial({ color: glow ? "#ffd0dc" : "#ffb3c4", toneMapped: false });
-    return { ramp, shellMap, mouths, outline, skin, shell, flipper, belly, sclera, iris, pupil, sparkle, blush, mouth, tongue };
+    const mouth = new THREE.MeshBasicMaterial({
+      color: "#ff6f61",
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
+      toneMapped: false,
+    });
+    const tongue = new THREE.MeshBasicMaterial({ color: "#ffb3b0", toneMapped: false });
+    return { ramp, shellMap, mouths, outline, skin, shell, flipper, belly, sclera, pupil, sparkle, sparkleSmall, blush, mouth, tongue };
   }, [glow, low]);
   useEffect(
     () => () => {
@@ -370,9 +423,9 @@ function TurtleModel({
       mats.flipper.dispose();
       mats.belly.dispose();
       mats.sclera.dispose();
-      mats.iris.dispose();
       mats.pupil.dispose();
       mats.sparkle.dispose();
+      mats.sparkleSmall.dispose();
       mats.blush.dispose();
       mats.mouth.dispose();
       mats.tongue.dispose();
@@ -404,7 +457,7 @@ function TurtleModel({
       body.current.position.y = Math.sin(t * 1.45) * bob * m;
       body.current.rotation.z = Math.sin(t * 0.7) * 0.04 * m;
       body.current.rotation.x = Math.sin(t * 0.85) * 0.03 * m;
-      body.current.rotation.y = emphasis === "replay" ? Math.sin(t * 0.7) * 0.75 * Math.min(m, 1.35) : Math.sin(t * 0.32) * 0.1 * m;
+      body.current.rotation.y = emphasis === "replay" ? Math.sin(t * 0.65) * 0.38 : Math.sin(t * 0.32) * 0.1 * m;
     }
     const amp = (face === "happy" ? 0.34 : 0.2) * m;
     const wiggleL = Math.sin(t * 3.3) * amp;
@@ -433,8 +486,9 @@ function TurtleModel({
       head.current.rotation.set(0.18, 0.08, 0.34);
       frontRight.current.rotation.set(-0.95, 0.25, -1.2);
     }
-    if (face === "sad" && head.current && anim !== "think" && anim !== "point") {
-      head.current.rotation.x += 0.18;
+    if (face === "sad" && head.current) {
+      head.current.rotation.y *= 0.35;
+      if (anim !== "think" && anim !== "point") head.current.rotation.x += 0.08;
     }
 
     const blink = blinkAmount(t, m);
@@ -445,11 +499,11 @@ function TurtleModel({
     }
     const lookX = face === "think" ? Math.sin(t * 0.8) * 0.035 : 0;
     const lookY = face === "think" ? 0.04 : face === "sad" ? -0.03 : 0;
-    if (lookL.current) lookL.current.position.set(lookX, -0.01 + lookY, 0.07);
-    if (lookR.current) lookR.current.position.set(lookX, -0.01 + lookY, 0.07);
-    const twinkle = 0.85 + Math.sin(t * 5.2) * 0.15;
-    if (sparkL.current) sparkL.current.scale.setScalar(0.038 * twinkle);
-    if (sparkR.current) sparkR.current.scale.setScalar(0.038 * (0.85 + Math.sin(t * 5.2 + 0.8) * 0.15));
+    if (lookL.current) lookL.current.position.set(lookX, lookY, 0);
+    if (lookR.current) lookR.current.position.set(lookX, lookY, 0);
+    const twinkle = 0.92 + Math.sin(t * 5.2) * 0.08;
+    if (sparkL.current) sparkL.current.scale.setScalar(twinkle);
+    if (sparkR.current) sparkR.current.scale.setScalar(0.92 + Math.sin(t * 5.2 + 0.8) * 0.08);
     mats.blush.opacity = face === "happy" ? 0.95 : face === "sad" ? 0.5 : 0.8;
 
     const chat = face === "talk";
@@ -476,11 +530,14 @@ function TurtleModel({
 
   const eyeMats = {
     sclera: mats.sclera,
-    iris: mats.iris,
     pupil: mats.pupil,
     sparkle: mats.sparkle,
-    skin: mats.skin,
+    sparkleSmall: mats.sparkleSmall,
   };
+  const headSeg = low ? 24 : 40;
+  const hex = glow
+    ? ["#fff6b0", "#ffd0e6", "#e7fff8", "#ffe4b8"]
+    : ["#fff3c4", "#ffd6e8", "#e4f7ff", "#ffe8c4"];
 
   return (
     <group ref={body}>
@@ -490,26 +547,24 @@ function TurtleModel({
           <meshBasicMaterial color="#eaffb8" side={THREE.BackSide} transparent opacity={0.22} depthWrite={false} toneMapped={false} />
         </mesh>
       )}
-      <group position={[0, 0.08, -0.05]}>
-        <Ball scale={[1.08, 0.8, SHELL_Z]} segments={seg} material={mats.shell} outline outlineMaterial={mats.outline} />
-        <mesh position={[0.1, 0.62, 0.85]} scale={[0.32, 0.1, 0.26]}>
-          <sphereGeometry args={[1, 12, 8]} />
-          <meshBasicMaterial color={glow ? "#fff4a0" : "#fff3c4"} toneMapped={false} />
-        </mesh>
-        <mesh position={[-0.48, 0.42, 0.72]} scale={[0.26, 0.09, 0.22]}>
-          <sphereGeometry args={[1, 12, 8]} />
-          <meshBasicMaterial color={glow ? "#ffc2e2" : "#ffd0e6"} toneMapped={false} />
-        </mesh>
-        <mesh position={[0.5, 0.32, 0.95]} scale={[0.22, 0.08, 0.18]}>
-          <sphereGeometry args={[1, 10, 8]} />
-          <meshBasicMaterial color={glow ? "#d9fff4" : "#e7f8ff"} toneMapped={false} />
-        </mesh>
+      <group position={[0, 0.12, -0.08]}>
+        <Ball scale={[1.16, 1.18, SHELL_Z]} segments={low ? 24 : 36} material={mats.shell} outline outlineMaterial={mats.outline} />
+        <ShellHex position={[0.04, 1.02, 0.62]} rotation={[0.72, 0, 0]} color={hex[0]} radius={0.2} />
+        <ShellHex position={[-0.4, 0.86, 0.7]} rotation={[0.62, 0.22, 0.08]} color={hex[1]} radius={0.16} />
+        <ShellHex position={[0.42, 0.82, 0.78]} rotation={[0.55, -0.2, -0.06]} color={hex[3]} radius={0.15} />
+        <ShellHex position={[-0.02, 0.62, 1.0]} rotation={[0.38, 0.04, 0]} color={hex[2]} radius={0.15} />
+        <ShellHex position={[0.28, 0.98, 0.48]} rotation={[0.8, -0.12, 0.12]} color={hex[1]} radius={0.12} />
       </group>
-      <group position={[0, -0.48, -0.08]}>
-        <Ball scale={[0.78, 0.28, 0.82]} segments={limbSeg} material={mats.belly} />
+      <mesh position={[0, 0.34, 0.96]} scale={[0.36, 0.3, 0.42]} material={mats.skin}>
+        <sphereGeometry args={[1, headSeg, headSeg]} />
+      </mesh>
+      <group position={[0, -0.55, -0.02]}>
+        <Ball scale={[0.82, 0.32, 0.9]} segments={limbSeg} material={mats.belly} />
       </group>
-      <group ref={head} position={[0, 0.42, 1.02]}>
-        <Ball scale={0.62} segments={seg} material={mats.skin} outline outlineMaterial={mats.outline} />
+      <group ref={head} position={[0, 0.58, 1.16]}>
+        <mesh material={mats.skin} scale={0.62}>
+          <sphereGeometry args={[1, headSeg, headSeg]} />
+        </mesh>
         <Eye position={[-0.22, 0.1, 0.5]} ballRef={eyeL} lookRef={lookL} sparkRef={sparkL} low={low} mats={eyeMats} />
         <Eye position={[0.22, 0.1, 0.5]} ballRef={eyeR} lookRef={lookR} sparkRef={sparkR} low={low} mats={eyeMats} />
         <mesh material={mats.blush} position={[-0.34, -0.08, 0.52]} rotation={[0, 0.35, 0]} scale={[0.14, 0.09, 0.05]}>
@@ -532,7 +587,7 @@ function TurtleModel({
           <group ref={open} visible={false} position={[0, -0.02, 0.02]}>
             <mesh scale={[0.11, 0.08, 0.05]}>
               <sphereGeometry args={[1, low ? 8 : 10, 8]} />
-              <meshBasicMaterial color={glow ? "#ff8aab" : "#c45b78"} toneMapped={false} />
+              <meshBasicMaterial color="#ff6f61" toneMapped={false} />
               <mesh position={[0, -0.2, 0.35]} scale={[0.55, 0.4, 0.45]} material={mats.tongue}>
                 <sphereGeometry args={[1, 6, 6]} />
               </mesh>
@@ -598,9 +653,9 @@ function Swim({ phase, children }: { phase: TurtlePhase; children: ReactNode }) 
 }
 
 export function TurtleSvg({ anim, glow = false, expression = "auto" }: { anim: TurtleAnim; glow?: boolean; expression?: TurtleExpression }) {
-  const shell = glow ? "#5dffb0" : "#8fd9bc";
-  const spot = glow ? "#fff3a4" : "#fff6d4";
-  const skin = glow ? "#f4ff86" : "#e7f7bf";
+  const shell = glow ? "#7dffc4" : "#4ef0b0";
+  const spot = glow ? "#fff6b0" : "#fff3c4";
+  const skin = "#fff3dc";
   const flip = glow ? "#dcff6e" : "#c6ee90";
   return (
     <svg className={`turtle-svg anim-${anim} face-${expression}${glow ? " glow" : ""}`} viewBox="0 0 240 170" role="img" aria-label="綠蠵龜小綠">
@@ -627,9 +682,9 @@ export function TurtleSvg({ anim, glow = false, expression = "auto" }: { anim: T
             <circle cx="170" cy="71" r="1.5" fill="#fff" />
             <circle cx="194" cy="69" r="1.5" fill="#fff" />
           </g>
-          <path className="mouth smile" d="M166 90 Q178 100 190 88" fill="none" stroke={glow ? "#ff7aa2" : "#a14b62"} strokeWidth="3" strokeLinecap="round" />
-          <path className="mouth frown" d="M168 96 Q178 88 188 96" fill="none" stroke={glow ? "#ff7aa2" : "#a14b62"} strokeWidth="3" strokeLinecap="round" />
-          <ellipse className="mouth open" cx="178" cy="94" rx="6" ry="5" fill={glow ? "#ff8aab" : "#c45b78"} />
+          <path className="mouth smile" d="M166 90 Q178 100 190 88" fill="none" stroke="#ff6f61" strokeWidth="3" strokeLinecap="round" />
+          <path className="mouth frown" d="M168 96 Q178 88 188 96" fill="none" stroke="#ff6f61" strokeWidth="3" strokeLinecap="round" />
+          <ellipse className="mouth open" cx="178" cy="94" rx="6" ry="5" fill="#ff6f61" />
         </g>
       </g>
     </svg>
@@ -686,17 +741,17 @@ export function TurtleStage({
     <div className={className} style={{ width: "100%", height: "100%", background: transparent ? "transparent" : "#000" }}>
       <Canvas
         frameloop={phase === "off" || capped ? "demand" : "always"}
-        dpr={quality === "low" ? 1 : capped ? [1, 1.25] : [1, 1.6]}
-        camera={{ position: glow ? [1.55, 0.95, 5.05] : [0, 0.55, 5.25], fov: glow ? 28 : 30 }}
+        dpr={quality === "low" ? 1 : capped ? [1, 1.25] : [1, 2]}
+        camera={{ position: glow ? [1.35, 1.05, 5.15] : [0.42, 0.78, 5.05], fov: glow ? 28 : 30 }}
         gl={{
           alpha: transparent,
           antialias: quality !== "low",
-          powerPreference: quality === "low" ? "low-power" : "default",
+          powerPreference: quality === "low" ? "low-power" : "high-performance",
         }}
         onCreated={({ gl, camera }) => {
           gl.setClearColor("#000000", transparent ? 0 : 1);
-          camera.lookAt(0, 0.32, glow ? 0.35 : 0.7);
-          if (glow) gl.toneMappingExposure = 1.15;
+          camera.lookAt(0, 0.38, glow ? 0.4 : 0.62);
+          if (glow) gl.toneMappingExposure = 1.12;
         }}
       >
         {capped && <FpsCap fps={fps} />}
@@ -709,9 +764,9 @@ export function TurtleStage({
           </>
         ) : (
           <>
-            <ambientLight intensity={0.62} />
-            <directionalLight position={[2.2, 3.4, 4.4]} intensity={1.7} color="#fffaf0" />
-            <directionalLight position={[-2.8, 1.2, -1.4]} intensity={0.42} color="#c8f6ea" />
+            <ambientLight intensity={0.28} />
+            <directionalLight position={[2.8, 4.2, 3.4]} intensity={2.7} color="#fffaf2" />
+            <directionalLight position={[-2.4, 0.6, 2.4]} intensity={0.45} color="#e7fff4" />
           </>
         )}
         {caustics && <Caustics low={quality === "low"} still={reduced} />}
@@ -720,7 +775,7 @@ export function TurtleStage({
         ))}
         <Swim phase={phase}>
           <TrueSize enabled={trueSize} screenWidthCm={screenWidthCm}>
-            <group rotation={glow ? [0.05, -0.35, 0] : [0, 0.08, 0]}>
+            <group rotation={glow ? [0.1, -0.48, 0] : [0.18, 0.32, 0]}>
               <TurtleModel
                 anim={shownAnim}
                 face={face}
