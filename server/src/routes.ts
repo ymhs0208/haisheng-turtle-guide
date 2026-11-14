@@ -8,6 +8,7 @@ import { gradeAnswer } from "./grade.js";
 import { HttpError, clamp, wrap } from "./http.js";
 import { metaPayload } from "./labels.js";
 import type { Hub } from "./hub.js";
+import { allowRequest, MAX_INPUT_CHARS } from "./guard.js";
 import { answerChat } from "./rag.js";
 import { cleanName, createSessionRecord, remainingSec, touchZone } from "./session-logic.js";
 import type { Store } from "./store.js";
@@ -27,6 +28,14 @@ function isGroup(value: unknown): value is ExperimentGroup {
 
 function bodyOf(req: Request): Record<string, unknown> {
   return req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+}
+
+function readChatMessage(value: unknown, rateKey: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new HttpError(400, "請輸入想問的話");
+  const text = value.trim();
+  if (text.length > 800) throw new HttpError(400, "請把問題縮短一點，一次問一件事。");
+  if (!allowRequest(rateKey)) throw new HttpError(429, "問得太快了，先喘一口氣，等一下再問小綠。");
+  return text.slice(0, MAX_INPUT_CHARS);
 }
 
 function present(session: Session) {
@@ -232,10 +241,24 @@ export function mountRoutes(app: Express, deps: { store: Store; content: Content
 
   app.post("/api/sessions/:id/chat", wrap(async (req, res) => {
     const session = await requireSession(store, String(req.params.id));
-    const message = bodyOf(req).message;
-    if (typeof message !== "string" || !message.trim()) throw new HttpError(400, "請輸入想問的話");
+    const message = readChatMessage(bodyOf(req).message, session.id);
     const result = await answerChat({ store, content, session, message });
     res.json(result);
+  }));
+
+  app.post("/api/sessions/:id/chat/stream", wrap(async (req, res) => {
+    const session = await requireSession(store, String(req.params.id));
+    const message = readChatMessage(bodyOf(req).message, `${session.id}:stream`);
+    const result = await answerChat({ store, content, session, message });
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+    for (let index = 0; index < result.reply.length; index += 18) {
+      res.write(`data: ${JSON.stringify({ type: "delta", text: result.reply.slice(index, index + 18) })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ type: "done", ...result })}\n\n`);
+    res.end();
   }));
 
   app.get("/api/sessions/:id/summary", wrap(async (req, res) => {

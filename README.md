@@ -203,19 +203,20 @@ chromium-browser --kiosk "http://<主機>:43124/?mirror=1&clean=1&quality=low"
 
 ## 模型與檢索
 
-`.env.example` 複製成 `.env`。預設 `LLM_PROVIDER=mock`，不需要金鑰。檢索用 64 維字元 n-gram，可重現，也寫進 pgvector 的 `vector(64)`。
+`.env.example` 複製成 `.env`。沒有 `LLM_API_KEY` 時自動用 mock，不需要金鑰。要接 OpenAI、Gemini 的相容端點、Groq 或本機 Ollama，就填 `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`、`EMBED_MODEL`、`EMBED_DIM`。金鑰只留在伺服器。雲端失敗時會退回館內資料簡答。
 
-若改成 `openai`，生成走 `OPENAI_BASE_URL` 的 Chat Completions。金鑰只在伺服器。雲端失敗時會退回館內資料簡答，並在回覆標明。`EMBEDDING_PROVIDER=openai` 時，向量若不是 64 維，查詢改在應用層做餘弦；預設本地向量才走 pgvector 索引。
+`npm run ingest` 會把 `content/*.json` 和 `content/docs` 裡的 md、txt、pdf 切成大約 300 到 500 字的段落，寫進 PostgreSQL pgvector；沒有資料庫時改存 JSON，查詢在記憶體做餘弦。本地向量是 64 維。遠端向量若不是 64 維，就在應用層算。
 
-聊天先看意圖：提示注入、離題、閒聊、館內問題。注入與離題不會送給模型。館內問題檢索不到就明說不知道，並建議問現場人員。個人記憶只在換區後提一次先前答錯的概念；展示箱上的公開回答不帶個人記憶。
+聊天先做規則分類，必要時再問一次便宜的模型：館內問題、閒聊、離題、不安全或提示注入。館內問題只根據檢索到的段落回答，並標 `[1]`、`[2]`。信心不夠就說不確定，請改問現場人員。個人記憶只在換區後提一次先前答錯的概念；展示箱上的公開回答不帶個人記憶。
 
 ## 測試
 
 ```bash
 npm test
+npm run eval:rag
 ```
 
-涵蓋 BKT、三種策略、題目去重、種子檔、意圖分流與引用、以及一條從作答到團體題的 API／WebSocket 路徑。
+涵蓋 BKT、三種策略、題目去重、種子檔、意圖分流與引用、切段、混合檢索、護欄，以及一條從作答到團體題的 API／WebSocket 路徑。`eval:rag` 會印出檢索 hit@3 和拒絕分類的正確率。
 
 ## 已知限制
 

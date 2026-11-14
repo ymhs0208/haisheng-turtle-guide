@@ -42,7 +42,7 @@ test("館內問題會引用資料；注入與閒聊不會裝懂", async () => {
   });
   assert.equal(bleach.intent, "knowledge");
   assert.ok(bleach.sources.length > 0);
-  assert.match(bleach.reply, /《.+》/);
+  assert.match(bleach.reply, /\[1\]/);
   assert.ok(bleach.sources.some((item) => item.title.includes("白化")));
 
   const vent = await answerChat({
