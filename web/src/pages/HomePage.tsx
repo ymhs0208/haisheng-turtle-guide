@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
-import { Porthole } from "@/components/Porthole";
+import { MuseumJourney } from "@/components/MuseumJourney";
 import { ZoneSelect } from "@/components/ZoneSelect";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -47,13 +47,13 @@ export function HomePage() {
   const away = turtlePhase === "off";
 
   return (
-    <div className="soft-in grid gap-5">
-      <header>
-        <p className="text-base text-tide">{zone.hall}</p>
-        <h1 className="font-serif text-3xl">{session.nickname || "朋友"}，今天想先做什麼？</h1>
-      </header>
+    <div className="museum-home">
+      <MuseumJourney key={session.id} />
+      <details className="personal-tools"><summary>更多選項與參觀工具</summary><div className="museum-utilities">
+      <details className="card">
+      <summary className="cursor-pointer font-semibold">自由探索與展示箱</summary>
+      <div className="mt-4 grid gap-4">
       <ZoneSelect />
-      <Porthole size="lg" />
       <div className="grid gap-3">
         <Button size="lg" onClick={playIntro}>
           {introOn ? "再聽一次" : "聽小綠介紹"}
@@ -77,8 +77,9 @@ export function HomePage() {
           </Link>
         </p>
       )}
+      </div></details>
       <details className="card text-base leading-7">
-        <summary className="cursor-pointer text-lg font-semibold">其他</summary>
+        <summary className="cursor-pointer text-lg font-semibold">參觀工具與設定</summary>
         <div className="mt-4 grid gap-3">
           <div className="grid grid-cols-2 gap-2">
             <Button variant="ghost" asChild>
@@ -104,12 +105,12 @@ export function HomePage() {
               {location.origin}/j/{session.id}
             </p>
           </div>
-          <Link className="font-semibold text-tide underline-offset-4 hover:underline" to="/app/admin">
+          {debug && <Link className="font-semibold text-tide underline-offset-4 hover:underline" to="/app/admin">
             工作人員
-          </Link>
+          </Link>}
         </div>
       </details>
-      <details className="card text-base leading-7">
+      {debug && <details className="card text-base leading-7">
         <summary className="cursor-pointer text-lg font-semibold">評審示範</summary>
         <p className="mt-3 text-muted">訪客會被隨機分組。這裡可以改組，或把剩餘時間改短。</p>
         <div className="mt-3 grid gap-2">
@@ -122,7 +123,7 @@ export function HomePage() {
             把剩餘時間改成 30 秒
           </Button>
         </div>
-      </details>
+      </details>}
       {debug && (
         <section className="card grid gap-3 text-base leading-7">
           <h2 className="font-serif text-2xl">教師檢視</h2>
@@ -151,6 +152,7 @@ export function HomePage() {
         </section>
       )}
       <p className="text-base leading-7 text-muted">{disclaimer}</p>
+      </div></details>
       <Dialog open={recognizeOpen} onOpenChange={setRecognizeOpen}>
         <DialogContent>
           <DialogTitle>拍照辨識還沒開放</DialogTitle>

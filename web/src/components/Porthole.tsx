@@ -13,7 +13,7 @@ const CAPTION: Record<string, string> = {
 export function Porthole({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const { anim, expression, turtlePhase, quality, emphasis } = useGuide();
   const caption =
-    turtlePhase === "off" ? CAPTION.off : expression === "sad" ? "小綠有點難過" : anim === "wave" ? "小綠好開心" : CAPTION[anim];
+    turtlePhase === "off" ? CAPTION.off : expression === "sad" ? "小綠陪你再想想" : anim === "wave" ? "小綠好開心" : CAPTION[anim];
   const width = size === "lg" ? "min(100%, 280px)" : size === "sm" ? "min(100%, 120px)" : "min(100%, 200px)";
   return (
     <div>

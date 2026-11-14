@@ -32,3 +32,6 @@
 @media (prefers-reduced-motion: reduce) {
   .turtle-svg, .turtle-svg * { animation: none !important; }
 }
+.guide-avatar .head { transform-origin: 120px 120px; }
+.guide-avatar .flip-r { transform-origin: 165px 139px; }
+.guide-avatar .open { transform-box: fill-box; }

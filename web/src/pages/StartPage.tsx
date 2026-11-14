@@ -1,16 +1,22 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Porthole } from "@/components/Porthole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/api";
 import { useGuide } from "@/state";
+import { useDebug } from "@/debug";
+import { museumStops } from "@/data/museum";
 import type { AgeGroup, ExperimentGroup, Session } from "@/types";
 
 export function StartPage() {
   const { ready, error, session, meta, disclaimer, adopt, logout } = useGuide();
   const navigate = useNavigate();
+  const debug = useDebug();
+  const { station } = useParams();
+  const stop = museumStops.find(item => item.id === station);
+  const destination = stop ? `/app?station=${stop.id}` : "/app";
   const [nickname, setNickname] = useState("");
   const [age, setAge] = useState<AgeGroup | "">("");
   const [minutes, setMinutes] = useState(40);
@@ -18,8 +24,8 @@ export function StartPage() {
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState("");
 
-  async function start() {
-    if (!age) {
+  async function start(quick = false) {
+    if (!quick && !age) {
       setFormError("請先選年齡");
       return;
     }
@@ -30,13 +36,13 @@ export function StartPage() {
         method: "POST",
         body: JSON.stringify({
           nickname,
-          ageGroup: age,
+          ageGroup: age || "adult",
           visitMinutes: minutes,
-          ...(group ? { experimentGroup: group } : {}),
+          ...(debug && group ? { experimentGroup: group } : {}),
         }),
       });
       adopt(data.session);
-      navigate("/app");
+      navigate(destination);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "沒有建成行程");
     } finally {
@@ -51,13 +57,14 @@ export function StartPage() {
       <header>
         <p className="text-base font-semibold text-tide">國立海洋生物博物館</p>
         <h1 className="mt-2 font-serif text-4xl">小綠導覽</h1>
-        <p className="mt-2 text-lg leading-8 text-muted">我是小綠。選個年齡，我們一起看海。</p>
+        <p className="mt-2 text-lg leading-8 text-muted">我是小綠。{stop ? `我們從${stop.hall}開始。你想先看什麼？` : "準備好了，我就陪你一起看海。"}</p>
       </header>
-      <Porthole size="lg" />
-      {error && <p className="rounded-3xl bg-coral/10 px-4 py-3 text-base leading-7 text-coral">{error}。請先在專案資料夾執行 npm run dev。</p>}
+      <Porthole size="md" />
+      {station && !stop && <p role="status" className="text-muted">找不到這個展區。你可以從導覽首頁選擇展館。</p>}
+      {error && <p className="rounded-3xl bg-coral/10 px-4 py-3 text-base leading-7 text-coral">暫時連不上導覽。請重新整理，或請現場工作人員協助。</p>}
       {session ? (
         <div className="grid gap-3">
-          <Button size="lg" onClick={() => navigate("/app")}>
+          <Button size="lg" onClick={() => navigate(destination)}>
             繼續以{session.nickname || "朋友"}的身份看海
           </Button>
           <Button
@@ -71,8 +78,15 @@ export function StartPage() {
           </Button>
         </div>
       ) : (
-        <form
-          className="card grid gap-5"
+        <div className="grid gap-4">
+          <Button size="lg" disabled={pending || Boolean(error)} onClick={() => void start(true)}>
+            {pending ? "準備中…" : stop ? `開始${stop.hall}導覽` : "直接開始參觀"}
+          </Button>
+          {formError && <p role="alert" className="text-coral">{formError}</p>}
+          <details className="card">
+          <summary className="cursor-pointer font-semibold">調整導覽偏好</summary>
+          <form
+          className="mt-4 grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
             void start();
@@ -117,7 +131,7 @@ export function StartPage() {
               ))}
             </div>
           </div>
-          <details className="text-base text-muted">
+          {debug && <details className="text-base text-muted">
             <summary className="cursor-pointer text-lg font-semibold text-ink">工作人員：指定分組</summary>
             <p className="mt-2 leading-7">訪客平常會被隨機分到一組。這裡可以指定，方便對照三種補救方式。</p>
             <div className="mt-2 grid gap-2">
@@ -133,12 +147,13 @@ export function StartPage() {
                 </button>
               ))}
             </div>
-          </details>
-          {formError && <p className="text-base text-coral">{formError}</p>}
+          </details>}
           <Button type="submit" size="lg" disabled={pending || Boolean(error)}>
             {pending ? "準備中…" : "開始導覽"}
           </Button>
-        </form>
+          </form>
+          </details>
+        </div>
       )}
       {disclaimer && <p className="text-base leading-7 text-muted">{disclaimer}</p>}
     </main>

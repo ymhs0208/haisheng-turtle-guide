@@ -1,11 +1,13 @@
-import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Compass, MessageCircle, Sparkles, Waves, Map } from "lucide-react";
 import { ShowOverlay } from "@/components/ShowOverlay";
 import { useGuide } from "@/state";
+import { museumMap } from "@/data/museum";
 
-const LINKS = [
-  ["/app", "首頁"],
-  ["/app/quiz", "小挑戰"],
-  ["/app/chat", "問小綠"],
+const links = [
+  { to: "/app", label: "陪我參觀", icon: Compass },
+  { to: "/app/quiz", label: "小挑戰", icon: Sparkles },
+  { to: "/app/chat", label: "問小綠", icon: MessageCircle },
 ];
 
 export function Shell() {
@@ -13,31 +15,21 @@ export function Shell() {
   const location = useLocation();
   if (!ready) return <main className="grid min-h-screen place-items-center text-base text-muted">小綠游過來…</main>;
   if (!session) return <Navigate to="/" replace />;
-
+  const home = location.pathname === "/app";
   return (
-    <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28 pt-5">
-      <Outlet />
-      {toast && (
-        <button className="fixed bottom-24 left-1/2 z-30 w-[min(92vw,440px)] -translate-x-1/2 rounded-2xl bg-white px-4 py-3 text-left text-base text-ink shadow-lg ring-1 ring-tide/15" onClick={clearToast}>
-          {toast}
-        </button>
-      )}
+    <div className="museum-shell">
+      <a className="skip-content" href="#main-content">跳到主要內容</a>
+      <header className="museum-header">
+        <Link to="/app" className="museum-brand" aria-label="小綠海洋導覽首頁"><span className="brand-mark"><Waves size={27} /></span><span><strong>小綠</strong><small>你的私人海洋導遊</small></span></Link>
+        <a className="header-map" href={museumMap} target="_blank" rel="noreferrer"><Map size={17} /><span>館內地圖</span></a>
+      </header>
+      <main id="main-content" className={home ? "museum-main" : "museum-subpage"}>
+        {!home && <Link className="mb-5 inline-flex min-h-11 items-center gap-2 font-semibold text-tide" to="/app">← 回到小綠身邊</Link>}
+        <Outlet />
+      </main>
+      {toast && <button role="status" className="museum-toast" onClick={clearToast}>{toast}</button>}
       <ShowOverlay />
-      <nav className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-[480px] -translate-x-1/2 justify-around border-t border-tide/10 bg-white/95 px-2 py-2 backdrop-blur">
-        {LINKS.map(([to, label]) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/app"}
-            onClick={() => setAnim("idle")}
-            className={({ isActive }) =>
-              `flex min-h-12 min-w-24 items-center justify-center rounded-full px-3 text-base font-semibold ${isActive || (to !== "/app" && location.pathname.startsWith(to)) ? "bg-tide text-white" : "text-muted"}`
-            }
-          >
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+      <nav className="mobile-navigation" aria-label="主要功能">{links.map(({to, label, icon: Icon}) => <NavLink key={to} to={to} end={to === "/app"} onClick={() => setAnim("idle")}><Icon size={21} /><span>{label}</span></NavLink>)}</nav>
     </div>
   );
 }

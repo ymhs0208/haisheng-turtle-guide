@@ -15,6 +15,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<StartPage />} />
+          <Route path="/s/:station" element={<StartPage />} />
           <Route path="/j/:id" element={<JoinPage />} />
           <Route path="/app" element={<Shell />}>
             <Route index element={<HomePage />} />

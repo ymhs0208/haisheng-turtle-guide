@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CARAPACE_CM, SHELL_LENGTH, SWIM_MS } from "./timing";
 import "./turtle.css";
+import { GuideCharacter, GuideCharacterFallback } from "./GuideCharacter";
 
 const SWIM_SEC = SWIM_MS / 1000;
 const SHELL_Z = SHELL_LENGTH / 2;
@@ -733,7 +734,7 @@ export function TurtleStage({
   if (!webgl) {
     return (
       <div className={className} style={{ display: "grid", placeItems: "center", background: transparent ? "transparent" : "#000" }}>
-        <TurtleSvg anim={shownAnim} glow={glow} expression={reduced ? "auto" : expression} />
+        {trueSize ? <TurtleSvg anim={shownAnim} glow={glow} expression={reduced ? "auto" : expression} /> : <GuideCharacterFallback anim={shownAnim} glow={glow} />}
       </div>
     );
   }
@@ -776,7 +777,7 @@ export function TurtleStage({
         <Swim phase={phase}>
           <TrueSize enabled={trueSize} screenWidthCm={screenWidthCm}>
             <group position={glow ? [0, 0, 0] : [0.12, -0.02, 0]} rotation={glow ? [0.1, -0.48, 0] : [0.06, -0.38, 0]}>
-              <TurtleModel
+              {trueSize ? <TurtleModel
                 anim={shownAnim}
                 face={face}
                 quality={quality}
@@ -784,7 +785,7 @@ export function TurtleStage({
                 motion={(reduced ? 0.2 : 1) * exaggerate}
                 tempo={reduced ? 0.45 : tempo}
                 glow={glow}
-              />
+              /> : <GuideCharacter anim={shownAnim} expression={expression} quality={quality} motion={reduced ? 0 : exaggerate} tempo={tempo} glow={glow} />}
             </group>
           </TrueSize>
         </Swim>

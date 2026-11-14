@@ -72,10 +72,12 @@ function closeSocket(socket: WebSocket | null) {
 const params = new URLSearchParams(location.search);
 
 function readNumber(query: string, storage: string, fallback: number, min: number, max: number): number {
-  const fromQuery = Number(params.get(query));
-  if (Number.isFinite(fromQuery)) return Math.min(max, Math.max(min, fromQuery));
-  const stored = Number(localStorage.getItem(storage));
-  if (Number.isFinite(stored)) return Math.min(max, Math.max(min, stored));
+  const queryValue = params.get(query);
+  const fromQuery = Number(queryValue);
+  if (queryValue?.trim() && Number.isFinite(fromQuery)) return Math.min(max, Math.max(min, fromQuery));
+  const storedValue = localStorage.getItem(storage);
+  const stored = Number(storedValue);
+  if (storedValue?.trim() && Number.isFinite(stored)) return Math.min(max, Math.max(min, stored));
   return fallback;
 }
 
@@ -347,6 +349,9 @@ export function App() {
             <p className="kicker">大家問得最多 · {feature.votes} 人</p>
             <h1>{feature.question}</h1>
             <p className="prompt">{feature.reply}</p>
+            {feature.sources.length > 0 && (
+              <p className="sample">資料依據：{feature.sources.map((source) => source.title).join("、")}</p>
+            )}
           </>
         )}
         {online && !show && !feature && current && (

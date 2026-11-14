@@ -22,6 +22,11 @@ export function ChatPage() {
   const [error, setError] = useState("");
   const [listening, setListening] = useState(false);
   const recRef = useRef<SpeechRecognition | null>(null);
+  useEffect(() => () => {
+    window.speechSynthesis?.cancel();
+    recRef.current?.abort();
+    setAnim("idle");
+  }, [setAnim]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const speechOk = typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -85,6 +90,8 @@ export function ChatPage() {
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(content);
     utter.lang = "zh-TW";
+    utter.onstart = () => setAnim("talk");
+    utter.onend = utter.onerror = () => setAnim("idle");
     window.speechSynthesis.speak(utter);
   }
 
